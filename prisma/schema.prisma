@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User authentication
+model User {
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  password    String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Transactions created by this user
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Shared workspace for family/team finances
+model Workspace {
+  id         String @id @default(cuid())
+  name       String
+  inviteCode String @unique @default(cuid())
+
+  // Relations
+  users                User[]
+  bankAccounts         BankAccount[]
+  categories           Category[]
+  transactions         Transaction[]
+  installmentPurchases InstallmentPurchase[]
+  goals                Goal[]
+  creditCards          CreditCard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Bank accounts
+model BankAccount {
+  id             String @id @default(cuid())
+  name           String
+  initialBalance Float
+  currentBalance Float
+  totalInvested  Float? @default(0) // Track principal for tax calculations
+  color          String @default("#059669")
+  icon           String @default("Wallet")
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  transactions         Transaction[]
+  installmentPurchases InstallmentPurchase[]
+  goals                Goal[]
+
+  // Investment fields
+  isInvestment    Boolean   @default(false)
+  cdiPercentage   Float?    @default(100) // Percentage of CDI (e.g., 100, 110)
+  maturityDate    DateTime?
+  lastYieldUpdate DateTime? // Track when yield was last calculated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Categories for income and expenses
+model Category {
+  id    String @id @default(cuid())
+  name  String
+  type  String // "INCOME" or "EXPENSE"
+  color String @default("#6b7280")
+  icon  String @default("Tag")
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  transactions         Transaction[]
+  installmentPurchases InstallmentPurchase[]
+  creditCardPurchases  CreditCardPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Individual transactions
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  date        DateTime
+  type        String // "INCOME" or "EXPENSE"
+  notes       String?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  // Optional: if this transaction is part of an installment purchase
+  installmentPurchaseId String?
+  installmentPurchase   InstallmentPurchase? @relation(fields: [installmentPurchaseId], references: [id], onDelete: SetNull)
+  installmentNumber     Int?
+
+  // Payment tracking
+  isPaid Boolean   @default(false)
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, date])
+  @@index([bankAccountId])
+  @@index([categoryId])
+}
+
+// Installment purchases (compras parceladas)
+model InstallmentPurchase {
+  id                String   @id @default(cuid())
+  description       String
+  totalAmount       Float
+  totalInstallments Int
+  startDate         DateTime
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Related transactions (one per installment)
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Financial goals
+model Goal {
+  id                  String    @id @default(cuid())
+  title               String
+  targetAmount        Float
+  currentAmount       Float     @default(0)
+  deadline            DateTime?
+  monthlyContribution Float?
+  color               String    @default("#3b82f6")
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  storageAccountId String?
+  storageAccount   BankAccount? @relation(fields: [storageAccountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Credit Cards
+model CreditCard {
+  id         String  @id @default(cuid())
+  name       String // "Nubank Platinum"
+  lastDigits String? // "1234"
+  limit      Float
+  closingDay Int // Dia do fechamento (1-28)
+  dueDay     Int // Dia do vencimento (1-28)
+  color      String  @default("#8B5CF6")
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  invoices  CreditCardInvoice[]
+  purchases CreditCardPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+// Credit Card Invoice (Fatura mensal)
+model CreditCardInvoice {
+  id                String    @id @default(cuid())
+  month             Int // 1-12
+  year              Int
+  closingDate       DateTime // Data real de fechamento
+  dueDate           DateTime // Data real de vencimento
+  totalAmount       Float     @default(0)
+  status            String    @default("OPEN") // OPEN, CLOSED, PAID
+  paidAt            DateTime?
+  paidFromAccountId String? // Conta de onde foi pago
+
+  creditCardId String
+  creditCard   CreditCard @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  purchases CreditCardPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([creditCardId, month, year])
+  @@index([creditCardId])
+}
+
+// Credit Card Purchase (Compra no cartão)
+model CreditCardPurchase {
+  id                 String   @id @default(cuid())
+  description        String
+  totalAmount        Float
+  installments       Int      @default(1) // Número de parcelas
+  currentInstallment Int      @default(1) // Parcela atual (para parcelados)
+  purchaseDate       DateTime
+
+  creditCardId String
+  creditCard   CreditCard @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  // Fatura onde esta parcela cai
+  invoiceId String
+  invoice   CreditCardInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Para compras parceladas, referência à compra original
+  parentPurchaseId String?
+  parentPurchase   CreditCardPurchase?  @relation("InstallmentPurchases", fields: [parentPurchaseId], references: [id], onDelete: SetNull)
+  childPurchases   CreditCardPurchase[] @relation("InstallmentPurchases")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([creditCardId])
+  @@index([invoiceId])
+}
