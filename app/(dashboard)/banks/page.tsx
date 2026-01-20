@@ -201,6 +201,7 @@ export default function BanksPage() {
       initialBalance: initialBalance,
       color: selectedColor,
       icon: selectedIcon,
+      type: "corrente", // default type
       isInvestment,
       cdiPercentage: isInvestment ? cdiPercentage : null,
       maturityDate: isInvestment && maturityDate ? maturityDate : null,

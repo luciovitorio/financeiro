@@ -13,6 +13,7 @@ interface CategoryData {
   name: string;
   value: number;
   color: string;
+  [key: string]: string | number; // Index signature for Recharts compatibility
 }
 
 interface CategoryPieChartProps {
@@ -40,7 +41,7 @@ export function CategoryPieChart({ data, title }: CategoryPieChartProps) {
             cy="50%"
             labelLine={false}
             label={({ name, percent }) =>
-              `${name}: ${(percent * 100).toFixed(0)}%`
+              `${name}: ${((percent || 0) * 100).toFixed(0)}%`
             }
             outerRadius={100}
             fill="#8884d8"
@@ -51,11 +52,11 @@ export function CategoryPieChart({ data, title }: CategoryPieChartProps) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: number) =>
+            formatter={(value: number | undefined) =>
               new Intl.NumberFormat("pt-BR", {
                 style: "currency",
                 currency: "BRL",
-              }).format(value)
+              }).format(value || 0)
             }
           />
           <Legend />
