@@ -1,16 +1,19 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getDailyCDI } from '@/lib/bcb'
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getDailyCDI } from "@/lib/bcb";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // Security check: simple API Key check if needed, or allow public for local dev triggering
     // const authHeader = request.headers.get('authorization')
     // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) { ... }
 
-    const cdiData = await getDailyCDI()
+    const cdiData = await getDailyCDI();
     if (!cdiData) {
-      return NextResponse.json({ error: 'Falha ao buscar taxa CDI' }, { status: 500 })
+      return NextResponse.json(
+        { error: "Falha ao buscar taxa CDI" },
+        { status: 500 },
+      );
     }
 
     // CDI value comes as daily percentage already (e.g. 0.05)
@@ -23,27 +26,31 @@ export async function POST(request: Request) {
     const investmentAccounts = await prisma.bankAccount.findMany({
       where: {
         isInvestment: true,
-        currentBalance: { gt: 0 } // Only positive balance yields
-      }
-    })
+        currentBalance: { gt: 0 }, // Only positive balance yields
+      },
+    });
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    let processedCount = 0
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let processedCount = 0;
 
     for (const account of investmentAccounts) {
       // Skip if updated today already
       if (account.lastYieldUpdate) {
-        const lastUpdate = new Date(account.lastYieldUpdate)
-        lastUpdate.setHours(0, 0, 0, 0)
+        const lastUpdate = new Date(account.lastYieldUpdate);
+        lastUpdate.setHours(0, 0, 0, 0);
         if (lastUpdate.getTime() === today.getTime()) {
-          continue
+          continue;
         }
       }
 
+      // DISABLED: User prefers to manually track balance from bank app
+      // No automatic transactions or balance updates for CDI accounts
+      // Just mark as processed to avoid re-checking
+      /*
       // Check CDIPercentage
-      const percentageOfCDI = account.cdiPercentage || 100
+      const percentageOfCDI = account.cdiPercentage || 100;
       
       // Calculate yield
       // CDI Value is percentage (e.g. 0.05). Need to divide by 100 to get decimal.
@@ -77,11 +84,12 @@ export async function POST(request: Request) {
           }
         })
 
-        // Update Account
+        // Update Account (only update the date, NOT the balance)
+        // This prevents compound interest - yields are tracked in transactions
+        // Balance will only change on maturity/withdrawal events
         await prisma.bankAccount.update({
           where: { id: account.id },
           data: {
-            currentBalance: { increment: grossYield },
             lastYieldUpdate: new Date()
           }
         })
@@ -94,17 +102,28 @@ export async function POST(request: Request) {
           data: { lastYieldUpdate: new Date() }
         })
       }
+      */
+
+      // Just mark as processed to avoid re-checking today
+      await prisma.bankAccount.update({
+        where: { id: account.id },
+        data: { lastYieldUpdate: new Date() },
+      });
+
+      processedCount++;
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       processed: processedCount,
       cdiDate: cdiData.date,
-      cdiValue: cdiData.value 
-    })
-
+      cdiValue: cdiData.value,
+    });
   } catch (error) {
-    console.error('Yield Cron Error:', error)
-    return NextResponse.json({ error: 'Erro no processamento' }, { status: 500 })
+    console.error("Yield Cron Error:", error);
+    return NextResponse.json(
+      { error: "Erro no processamento" },
+      { status: 500 },
+    );
   }
 }

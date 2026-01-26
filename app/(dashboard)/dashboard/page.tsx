@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,8 @@ import {
   Smartphone,
   Clock,
   Calendar as CalendarIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
@@ -25,6 +29,7 @@ import { useSession } from "next-auth/react";
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { data, isLoading } = useDashboardData();
+  const [showValues, setShowValues] = React.useState(true);
 
   const userInitials =
     session?.user?.name
@@ -83,13 +88,30 @@ export default function DashboardPage() {
         <Card className="bg-primary-700 text-white border-0">
           <CardContent className="pt-6">
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-primary-100 text-sm mb-2">Saldo Total</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-primary-100 text-sm">Saldo Total</p>
+                  <button
+                    onClick={() => setShowValues(!showValues)}
+                    className="text-primary-100 hover:text-white transition-colors p-1"
+                    aria-label={
+                      showValues ? "Ocultar valores" : "Mostrar valores"
+                    }
+                  >
+                    {showValues ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 <p className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  {new Intl.NumberFormat("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  }).format(totalBalance)}
+                  {showValues
+                    ? new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(totalBalance)
+                    : "R$ ••••••"}
                 </p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendingUp className="h-3 w-3" />
@@ -108,13 +130,30 @@ export default function DashboardPage() {
         <Card className="border border-gray-200">
           <CardContent className="pt-6">
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-gray-600 text-sm mb-2">Receitas (Mês)</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Receitas (Mês)</p>
+                  <button
+                    onClick={() => setShowValues(!showValues)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                    aria-label={
+                      showValues ? "Ocultar valores" : "Mostrar valores"
+                    }
+                  >
+                    {showValues ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 <p className="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight">
-                  {new Intl.NumberFormat("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  }).format(income)}
+                  {showValues
+                    ? new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(income)
+                    : "R$ ••••••"}
                 </p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendingUp className="h-3 w-3 text-emerald-600" />
