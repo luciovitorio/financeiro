@@ -29,7 +29,8 @@ import { useSession } from "next-auth/react";
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { data, isLoading } = useDashboardData();
-  const [showValues, setShowValues] = React.useState(true);
+  const [showBalance, setShowBalance] = React.useState(false);
+  const [showIncome, setShowIncome] = React.useState(false);
 
   const userInitials =
     session?.user?.name
@@ -92,13 +93,13 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-primary-100 text-sm">Saldo Total</p>
                   <button
-                    onClick={() => setShowValues(!showValues)}
+                    onClick={() => setShowBalance(!showBalance)}
                     className="text-primary-100 hover:text-white transition-colors p-1"
                     aria-label={
-                      showValues ? "Ocultar valores" : "Mostrar valores"
+                      showBalance ? "Ocultar valores" : "Mostrar valores"
                     }
                   >
-                    {showValues ? (
+                    {showBalance ? (
                       <Eye className="h-4 w-4" />
                     ) : (
                       <EyeOff className="h-4 w-4" />
@@ -106,7 +107,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <p className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  {showValues
+                  {showBalance
                     ? new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -134,13 +135,13 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-gray-600 text-sm">Receitas (Mês)</p>
                   <button
-                    onClick={() => setShowValues(!showValues)}
+                    onClick={() => setShowIncome(!showIncome)}
                     className="text-gray-400 hover:text-gray-600 transition-colors p-1"
                     aria-label={
-                      showValues ? "Ocultar valores" : "Mostrar valores"
+                      showIncome ? "Ocultar valores" : "Mostrar valores"
                     }
                   >
-                    {showValues ? (
+                    {showIncome ? (
                       <Eye className="h-4 w-4" />
                     ) : (
                       <EyeOff className="h-4 w-4" />
@@ -148,7 +149,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <p className="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight">
-                  {showValues
+                  {showIncome
                     ? new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
